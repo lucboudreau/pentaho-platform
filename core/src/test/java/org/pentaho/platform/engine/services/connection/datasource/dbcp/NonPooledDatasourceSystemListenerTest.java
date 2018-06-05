@@ -30,15 +30,22 @@ import static org.mockito.Mockito.when;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
+import javax.sql.DataSource;
+
+import org.apache.commons.pool.ObjectPool;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.pentaho.database.model.DatabaseAccessType;
 import org.pentaho.database.model.DatabaseConnection;
 import org.pentaho.database.model.IDatabaseConnection;
 import org.pentaho.platform.api.cache.IPlatformCache;
+import org.pentaho.platform.api.cache.IPlatformCache.Cache;
 import org.pentaho.platform.api.cache.IPlatformCache.CacheScope;
 import org.pentaho.platform.api.data.IDBDatasourceService;
 import org.pentaho.platform.api.engine.IPentahoSession;
@@ -61,6 +68,8 @@ public class NonPooledDatasourceSystemListenerTest {
   public void init() {
     MockitoAnnotations.initMocks( this );
     when( nonPooledDatasourceSystemListenerSpy.getCache() ).thenReturn( mockCache );
+    when( mockCache.getCache( any( CacheScope.class ), any( Class.class ), any( Class.class ) ) )
+      .thenReturn( mock( MockPlatformCache.MockCache.class ) );
   }
 
   @Test
@@ -192,8 +201,16 @@ public class NonPooledDatasourceSystemListenerTest {
   }
 
   private void putInRegionCacheWasCalled( int wishedTimes ) {
-    verify( mockCache, times( wishedTimes ) ).put( eq( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ), anyString(),
-        anyObject() );
+    verify( mockCache, times( 1 ) )
+      .getCache(
+        eq( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ),
+        eq( String.class),
+        eq( DataSource.class ) );
+    verify( mockCache.getCache(
+      eq( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ),
+      eq( String.class),
+      eq( DataSource.class ) ), times( 1 ) )
+        .put( any ( String.class), any ( DataSource.class) );
   }
 
   private void isPortUsedByServerCalled( int wishedTimes ) {

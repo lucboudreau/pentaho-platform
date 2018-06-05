@@ -127,7 +127,7 @@ public class CacheManager implements ICacheManager, InitializingBean {
   }
 
   public void killSessionCache( IPentahoSession session ) {
-    delegate.clear( CacheScope.forSession( session ) );
+    delegate.getCache( CacheScope.forSession( session ) ).clear();
   }
 
   public void killSessionCaches() {
@@ -135,19 +135,19 @@ public class CacheManager implements ICacheManager, InitializingBean {
   }
 
   public void putInSessionCache( IPentahoSession session, String key, Object value ) {
-    delegate.put( CacheScope.forSession( session ), key, value );
+    delegate.getCache( CacheScope.forSession( session ) ).put( key, value );
   }
 
   public void clearCache() {
-    delegate.clear();
+    delegate.clearAll();
   }
 
   public void removeFromSessionCache( IPentahoSession session, String key ) {
-    delegate.remove( CacheScope.forSession( session ), key );
+    delegate.getCache( CacheScope.forSession( session ) ).remove( key );
   }
 
   public Object getFromSessionCache( IPentahoSession session, String key ) {
-    return delegate.get( CacheScope.forSession( session ), key );
+    return delegate.getCache( CacheScope.forSession( session ) ).get( key );
   }
 
   public boolean cacheEnabled() {
@@ -155,21 +155,19 @@ public class CacheManager implements ICacheManager, InitializingBean {
   }
 
   public void putInGlobalCache( Object key, Object value ) {
-    delegate.put( CacheScope.global(), key, value );
+    delegate.getCache( CacheScope.global() ).put( key, value );
   }
 
   public Object getFromGlobalCache( Object key ) {
-    return delegate.get( CacheScope.global(), key );
+    return delegate.getCache( CacheScope.global() ).get( key );
   }
 
   public void removeFromGlobalCache( Object key ) {
-    delegate.remove( CacheScope.global(), key );
+    delegate.getCache( CacheScope.global() ).remove( key );
   }
 
   public boolean cacheEnabled( String region ) {
-    // All regions are loaded on the fly now.
-    // For preloaded caches, use annotations.
-    return true;
+    return delegate.isEnabled();
   }
 
   public void onLogout( IPentahoSession session ) {
@@ -187,46 +185,46 @@ public class CacheManager implements ICacheManager, InitializingBean {
   }
 
   public void clearRegionCache( String region ) {
-    delegate.clear( CacheScope.forRegion( region ) );
+    delegate.getCache( CacheScope.forRegion( region ) ).clear();
   }
 
   public void removeRegionCache( String region ) {
-    delegate.clear( CacheScope.forRegion( region ), true );
+    delegate.getCache( CacheScope.forRegion( region ) ).clear( true );
   }
 
   public void putInRegionCache( String region, Object key, Object value ) {
-    delegate.put( CacheScope.forRegion( region ), key, value );
+    delegate.getCache( CacheScope.forRegion( region ) ).put( key, value );
   }
 
   public Object getFromRegionCache( String region, Object key ) {
-    return delegate.get( CacheScope.forRegion( region ), key );
+    return delegate.getCache( CacheScope.forRegion( region ) ).get( key );
   }
 
   public Set getAllEntriesFromRegionCache( String region ) {
-    return delegate.entrySet( CacheScope.forRegion( region ) );
+    return delegate.getCache( CacheScope.forRegion( region ) ).entrySet();
   }
 
   public Set getAllKeysFromRegionCache( String region ) {
-    return delegate.keySet( CacheScope.forRegion( region ) );
+    return delegate.getCache( CacheScope.forRegion( region ) ).keySet();
   }
 
   public List getAllValuesFromRegionCache( String region ) {
-    return new ArrayList<>( delegate.values( CacheScope.forRegion( region ) ) );
+    return new ArrayList<>( delegate.getCache( CacheScope.forRegion( region ) ).values() );
   }
 
   public void removeFromRegionCache( String region, Object key ) {
-    delegate.remove( CacheScope.forRegion( region ), key );
+    delegate.getCache( CacheScope.forRegion( region ) ).remove( key );
   }
 
   public long getElementCountInRegionCache( String region ) {
-    return delegate.size( CacheScope.forRegion( region ) );
+    return delegate.getCache( CacheScope.forRegion( region ) ).size();
   }
 
   public long getElementCountInSessionCache() {
-    return delegate.size( CacheScope.forSession( PentahoSessionHolder.getSession() ) );
+    return delegate.getCache( CacheScope.forSession( PentahoSessionHolder.getSession() ) ).size();
   }
 
   public long getElementCountInGlobalCache() {
-    return delegate.size( CacheScope.global() );
+    return delegate.getCache( CacheScope.global() ).size();
   }
 }

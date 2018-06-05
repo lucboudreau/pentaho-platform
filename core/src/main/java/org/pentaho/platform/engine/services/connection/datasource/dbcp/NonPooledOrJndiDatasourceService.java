@@ -65,7 +65,10 @@ public class NonPooledOrJndiDatasourceService extends BaseDatasourceService {
       }
       // if the resulting datasource is not null then store it in the cache
       if ( ds != null ) {
-        cacheManager.put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), dsName, ds );
+        cacheManager.getCache(
+          CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ),
+          String.class,
+          DataSource.class).put( dsName, ds );
       }
     } catch ( DatasourceMgmtServiceException daoe ) {
       log.debug( Messages.getInstance().getErrorString(

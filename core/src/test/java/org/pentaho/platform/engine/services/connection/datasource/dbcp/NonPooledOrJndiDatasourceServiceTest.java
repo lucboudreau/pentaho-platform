@@ -20,6 +20,18 @@
 
 package org.pentaho.platform.engine.services.connection.datasource.dbcp;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import javax.sql.DataSource;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.pentaho.database.model.DatabaseAccessType;
@@ -29,16 +41,8 @@ import org.pentaho.platform.api.cache.IPlatformCache.CacheScope;
 import org.pentaho.platform.api.data.DBDatasourceServiceException;
 import org.pentaho.platform.api.data.IDBDatasourceService;
 import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
-
-import javax.sql.DataSource;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.anyString;
+import org.pentaho.platform.cache.MockPlatformCache;
+import org.pentaho.platform.cache.MockPlatformCache.MockCache;
 
 
 public class NonPooledOrJndiDatasourceServiceTest {
@@ -50,7 +54,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
   IPlatformCache cacheManager;
   DataSource jndiDataSource;
   DataSource databaseConnectionDataSource;
-
+  MockCache mock2;
 
   @Before
   public void init() {
@@ -60,6 +64,14 @@ public class NonPooledOrJndiDatasourceServiceTest {
     jndiDataSource = mock( DataSource.class );
     databaseConnectionDataSource = mock( DataSource.class );
     service = spy( getPreparedService( mgmtService, cacheManager, jndiDataSource, databaseConnectionDataSource ) );
+
+    when( service.getCacheManager() ).thenReturn( cacheManager );
+    mock2 = mock( MockPlatformCache.MockCache.class );
+    when( cacheManager.getCache(
+      eq( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ),
+      eq( String.class ),
+      eq( DataSource.class ) ) )
+        .thenReturn( mock2 );
   }
 
   @Test
@@ -68,7 +80,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
     when( connection.getAccessType() ).thenReturn( DatabaseAccessType.JNDI );
     service.retrieve( testName );
     verify( service ).getJndiDataSource( testName );
-    verify( cacheManager ).put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), testName, jndiDataSource );
+    verify( mock2 ).put( testName, jndiDataSource );
   }
 
   @Test
@@ -76,7 +88,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
     when( mgmtService.getDatasourceByName( testName ) ).thenReturn( null );
     service.retrieve( testName );
     verify( service ).getJndiDataSource( testName );
-    verify( cacheManager ).put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), testName, jndiDataSource );
+    verify( mock2 ).put( testName, jndiDataSource );
   }
 
   @Test
@@ -86,7 +98,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
     when( connection.getAccessType() ).thenReturn( DatabaseAccessType.JNDI );
     service.retrieve( testName );
     verify( service, times( 2 ) ).getJndiDataSource( anyString() );
-    verify( cacheManager, never() ).put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), testName, jndiDataSource );
+    verify( mock2, never() ).put( testName, jndiDataSource );
   }
 
   @Test
@@ -97,7 +109,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
     when( connection.getAccessType() ).thenReturn( DatabaseAccessType.JNDI );
     service.retrieve( testName );
     verify( service, times( 2 ) ).getJndiDataSource( anyString() );
-    verify( cacheManager, never() ).put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), testName, jndiDataSource );
+    verify( mock2, never() ).put( testName, jndiDataSource );
   }
 
   @Test
@@ -106,7 +118,7 @@ public class NonPooledOrJndiDatasourceServiceTest {
     when( connection.getAccessType() ).thenReturn( DatabaseAccessType.ODBC );
     service.retrieve( testName );
     verify( service ).resolveDatabaseConnection( connection );
-    verify( cacheManager ).put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), testName, databaseConnectionDataSource );
+    verify( mock2 ).put( testName, databaseConnectionDataSource );
   }
 
   private NonPooledOrJndiDatasourceService getPreparedService( IDatasourceMgmtService mgmtService, IPlatformCache iCacheManager,

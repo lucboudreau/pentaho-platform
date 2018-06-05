@@ -172,7 +172,7 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
       if ( logger.isDebugEnabled() ) {
         logger.debug( "Removing domain from cache: " + key ); //$NON-NLS-1$
       }
-      cacheManager.remove( CacheScope.forRegion( CACHE_REGION ), key );
+      cacheManager.getCache( CacheScope.forRegion( CACHE_REGION ) ).remove( key );
       return true; // continue
     }
   };
@@ -184,7 +184,7 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
    */
   protected void forAllKeys( final CacheIteratorCallback callback ) {
     try {
-      Set<?> cachedObjects = cacheManager.keySet( CacheScope.forRegion( CACHE_REGION ) );
+      Set<?> cachedObjects = cacheManager.getCache( CacheScope.forRegion( CACHE_REGION ) ).keySet();
       if ( cachedObjects != null ) {
         for ( Object k : cachedObjects ) {
           if ( k instanceof CacheKey ) {
@@ -230,7 +230,9 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
   public Domain getDomain( final String id ) {
     final IPentahoSession session = PentahoSessionHolder.getSession();
     final CacheKey key = new CacheKey( session.getId(), id );
-    Domain domain = (Domain) cacheManager.get( CacheScope.forRegion( CACHE_REGION ), key );
+    final IPlatformCache.Cache<CacheKey, Domain> cacheInstance =
+      cacheManager.getCache( CacheScope.forRegion( CACHE_REGION ), CacheKey.class, Domain.class);
+    Domain domain = cacheInstance.get( key );
     if ( domain != null ) {
       if ( logger.isDebugEnabled() ) {
         logger.debug( "Found domain in cache: " + key ); //$NON-NLS-1$
@@ -258,7 +260,7 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
       if ( logger.isDebugEnabled() ) {
         logger.debug( "Caching domain by session: " + key ); //$NON-NLS-1$
       }
-      cacheManager.put( CacheScope.forRegion( CACHE_REGION ), key, domain );
+      cacheInstance.put( key, domain );
     }
     return domain;
   }
@@ -273,7 +275,10 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
       @Override
       public Boolean call( IPlatformCache cacheManager, CacheKey key ) {
         if ( domainId == null ? key.domainId == null : domainId.equals( key.domainId ) ) {
-          cacheManager.remove( CacheScope.forRegion( CACHE_REGION ), key );
+          cacheManager.getCache(
+            CacheScope.forRegion( CACHE_REGION ),
+            CacheKey.class,
+            Domain.class).remove( key );
         }
         return true; // continue
       }
@@ -311,7 +316,10 @@ public class SessionCachingMetadataDomainRepository implements IMetadataDomainRe
           if ( k instanceof String ) {
             String key = (String) k;
             if ( key != null && key.startsWith( DOMAIN_CACHE_KEY_PREDICATE ) ) {
-              cacheManager.remove( CacheScope.forRegion( CACHE_REGION ), key );
+              cacheManager.getCache(
+                CacheScope.forRegion( CACHE_REGION ),
+                CacheKey.class,
+                Domain.class).remove( key );
             }
           }
         }

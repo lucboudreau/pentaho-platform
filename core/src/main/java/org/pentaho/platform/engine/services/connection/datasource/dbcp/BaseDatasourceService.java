@@ -49,7 +49,8 @@ public abstract class BaseDatasourceService implements IDBDatasourceService {
    * 
    */
   public void clearCache() {
-    cacheManager.clear( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), true );
+    cacheManager.getCache(
+      CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ).clear( true );
   }
 
   /**
@@ -58,13 +59,19 @@ public abstract class BaseDatasourceService implements IDBDatasourceService {
    * 
    */
   public void clearDataSource( String dsName ) {
-    cacheManager.remove( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), dsName );
+    cacheManager.getCache(
+      CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ),
+      String.class,
+      DataSource.class).remove( dsName );
   }
 
   public DataSource getDataSource( String dsName ) throws DBDatasourceServiceException {
     DataSource dataSource = null;
     if ( cacheManager != null ) {
-      Object foundDs = cacheManager.get( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), dsName );
+      Object foundDs = cacheManager.getCache(
+        CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ),
+        String.class,
+        DataSource.class).get( dsName );
       if ( foundDs != null ) {
         dataSource = (DataSource) foundDs;
       } else {

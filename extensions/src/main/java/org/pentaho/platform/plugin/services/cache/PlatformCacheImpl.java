@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.dom4j.Element;
-import org.hibernate.cache.Cache;
 import org.hibernate.cache.CacheProvider;
 import org.pentaho.platform.api.cache.CacheRegionRequired;
 import org.pentaho.platform.api.cache.CacheRegionsRequired;
@@ -61,7 +60,8 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
 
   // Even though the map is not thread safe, we enforce
   // a read-write lock when accessing it at all times.
-  Map<String, Cache> scopesCaches = new HashMap<String, Cache>();
+  Map<String, org.hibernate.cache.Cache> scopesCaches =
+    new HashMap<String, org.hibernate.cache.Cache>();
 
   // Lock for cache access.
   ReentrantReadWriteLock lock = new ReentrantReadWriteLock( false );
@@ -134,7 +134,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
         // This is a high level collection for all session data,
         // and not specific to a single session yet.
         // Sessions themselves will be maps of maps.
-        Cache cache = buildCache( CacheScope.forSession( null ), cacheProperties );
+        org.hibernate.cache.Cache cache = buildCache( CacheScope.forSession( null ), cacheProperties );
         if ( cache == null ) {
           LOG.error( Messages.getInstance().getString( "CacheManager.ERROR_0005_UNABLE_TO_BUILD_CACHE" ) ); //$NON-NLS-1$
         } else {
@@ -156,9 +156,9 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
     }
   }
 
-  Cache buildCache( CacheScope scope, Properties cacheProperties ) {
+  org.hibernate.cache.Cache buildCache( CacheScope scope, Properties cacheProperties ) {
     if ( this.cacheProvider != null ) {
-      Cache cache = this.cacheProvider.buildCache( scope.getKey(), cacheProperties );
+      org.hibernate.cache.Cache cache = this.cacheProvider.buildCache( scope.getKey(), cacheProperties );
       LastModifiedCache lmCache = new LastModifiedCache( cache );
       if ( cacheExpirationRegistry != null ) {
         cacheExpirationRegistry.register( lmCache );
@@ -242,7 +242,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
     // Check if the region already exists.
     if ( !scopesCaches.containsKey( cacheScopeRegion.getKey() ) ) {
       // It does not. Create it.
-      Cache cache = buildCache( cacheScopeRegion, cacheProperties );
+      org.hibernate.cache.Cache cache = buildCache( cacheScopeRegion, cacheProperties );
 
       if ( cache == null ) {
         LOG.error( Messages.getInstance().getString( "CacheManager.ERROR_0005_UNABLE_TO_BUILD_CACHE" ) ); //$NON-NLS-1$
@@ -269,7 +269,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
           scopesCaches.get( scope.getKey() ).put( key, value );
           break;
         case Region:
-          Cache activeRegion = scopesCaches.get( scope.getKey() );
+          org.hibernate.cache.Cache activeRegion = scopesCaches.get( scope.getKey() );
 
           if ( activeRegion == null ) {
             activeRegion = buildCache( scope, getCacheProperties( PentahoSystem.getSystemSettings() ) );
@@ -279,7 +279,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
           break;
 
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map<Object, Object> sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap == null ) {
             sessionMap = new HashMap<Object, Object>();
@@ -296,6 +296,76 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
     }
   }
 
+  @SuppressWarnings( "unchecked" )
+  public <K, V> Cache<K, V> getCache( final CacheScope scope, Class<K> keyClass, Class<V> valueClass ) {
+    return new Cache<K, V>() {
+      public void put( K key, V value ) {
+        PlatformCacheImpl.this.put( scope, key, value );
+      }
+      public Set<Entry<K, V>> entrySet() {
+        return PlatformCacheImpl.this.entrySet( scope );
+      }
+      public Set<K> keySet() {
+        return PlatformCacheImpl.this.keySet( scope );
+      }
+      public Set<V> values() {
+        return PlatformCacheImpl.this.values( scope );
+      }
+      public int size() {
+        return PlatformCacheImpl.this.size( scope );
+      }
+      public V get( K key ) {
+        return (V) PlatformCacheImpl.this.get( scope, key );
+      }
+      public void remove( K key ) {
+        PlatformCacheImpl.this.remove( scope, key );
+      }
+      public void clear() {
+        PlatformCacheImpl.this.clear( scope );
+      }
+      public void clear( boolean delete ) {
+        PlatformCacheImpl.this.clear( scope, delete );
+      }
+    };
+  }
+
+  @SuppressWarnings( "rawtypes" )
+  public Cache getCache( CacheScope scope ) {
+    return new Cache() {
+      public void put( Object key, Object value ) {
+        PlatformCacheImpl.this.put( scope, key, value );
+      }
+      public Set entrySet() {
+        return PlatformCacheImpl.this.entrySet( scope );
+      }
+      public Set keySet() {
+        return PlatformCacheImpl.this.keySet( scope );
+      }
+      public Set values() {
+        return PlatformCacheImpl.this.values( scope );
+      }
+      public int size() {
+        return PlatformCacheImpl.this.size( scope );
+      }
+      public Object get( Object key ) {
+        return PlatformCacheImpl.this.get( scope, key );
+      }
+      public void remove( Object key ) {
+        PlatformCacheImpl.this.remove( scope, key );
+      }
+      public void clear() {
+        PlatformCacheImpl.this.clear( scope );
+      }
+      public void clear( boolean delete ) {
+        PlatformCacheImpl.this.clear( scope, delete );
+      }
+    };
+  }
+
+  public void clearAll() {
+    clear();
+  }
+
   public Set entrySet( CacheScope scope ) {
     if ( !isEnabled ) {
       return Collections.emptySet();
@@ -307,7 +377,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
         case Region:
           return scopesCaches.get( scope.getKey() ).toMap().entrySet();
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             return sessionMap.entrySet();
@@ -329,14 +399,14 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
         case Global:
           return scopesCaches.get( scope.getKey() ).toMap().keySet();
         case Region:
-          Cache activeRegion = scopesCaches.get( scope.getKey() );
+          org.hibernate.cache.Cache activeRegion = scopesCaches.get( scope.getKey() );
           if ( activeRegion == null ) {
             return Collections.emptySet();
           } else {
             return activeRegion.toMap().keySet();
           }
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             return sessionMap.keySet();
@@ -359,7 +429,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
         case Region:
           return Sets.newHashSet( scopesCaches.get( scope.getKey() ).toMap().values() );
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             return Sets.newHashSet( sessionMap.values() );
@@ -393,14 +463,14 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
         case Global:
           return scopesCaches.get( scope.getKey() ).get( key );
         case Region:
-          Cache activeRegion = scopesCaches.get( scope.getKey() );
+          org.hibernate.cache.Cache activeRegion = scopesCaches.get( scope.getKey() );
           if ( activeRegion == null ) {
             return null;
           } else {
             return activeRegion.get( key );
           }
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             return sessionMap.get( key );
@@ -429,7 +499,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
           break;
 
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map<Object, Object> sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             sessionMap.remove( key );
@@ -476,7 +546,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
           scopesCaches.get( scope.getKey() ).clear();
           break;
         case Region:
-          Cache activeRegion = scopesCaches.get( scope.getKey() );
+          org.hibernate.cache.Cache activeRegion = scopesCaches.get( scope.getKey() );
           if ( activeRegion != null ) {
             activeRegion.clear();
             if ( delete ) {
@@ -494,7 +564,7 @@ public class PlatformCacheImpl implements ApplicationContextAware, IPlatformCach
           break;
 
         case Session:
-          Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
+          org.hibernate.cache.Cache cache = scopesCaches.get( CacheScope.Scope.Session.name() );
           Map<Object, Object> sessionMap = (Map) cache.get( scope.getKey() );
           if ( sessionMap != null ) {
             sessionMap.clear();

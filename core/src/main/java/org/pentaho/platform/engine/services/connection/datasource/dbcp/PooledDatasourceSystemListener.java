@@ -33,6 +33,8 @@ import org.pentaho.platform.engine.services.messages.Messages;
 import org.pentaho.platform.util.logging.Logger;
 
 import javax.sql.DataSource;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @CacheRegionRequired( region = "JDBC_POOL" )
@@ -66,7 +68,11 @@ public class PooledDatasourceSystemListener extends NonPooledDatasourceSystemLis
     IPlatformCache cacheManager = PentahoSystem.get( IPlatformCache.class );
 
     List<ObjectPool> objectPools = null;
-    objectPools = (List<ObjectPool>) cacheManager.values( CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ) );
+    objectPools = new ArrayList<>(
+      cacheManager.getCache(
+        CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ),
+        String.class,
+        ObjectPool.class).values() );
 
     Logger.debug( this, "DatasourceSystemListener: Called for shutdown ..." ); //$NON-NLS-1$
 
@@ -84,8 +90,8 @@ public class PooledDatasourceSystemListener extends NonPooledDatasourceSystemLis
 
     }
 
-    cacheManager.clear( CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ), true );
-    cacheManager.clear( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), true );
+    cacheManager.getCache( CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ) ).clear( true );
+    cacheManager.getCache( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ) ).clear( true );
 
     Logger.debug( this, "DatasourceSystemListener: Completed shutdown." ); //$NON-NLS-1$
   }

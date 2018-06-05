@@ -182,62 +182,71 @@ public interface IPlatformCache extends ILogoutListener {
   }
 
   /**
-   * Puts an element into the cache of the given scope and key.
+   * Main method to obtain a cache instance.
    */
-  void put( CacheScope scope, Object key, Object value );
+  <K, V> Cache<K, V> getCache( CacheScope scope, Class<K> keyClass, Class<V> valueClass );
 
   /**
-   * Returns all cached entries for a given scope. The
-   * returned collection may be empty.
+   * Short hand method to get a non type-safe cache.
    */
   @SuppressWarnings( "rawtypes" )
-  Set<Entry> entrySet( CacheScope scope );
+  Cache getCache( CacheScope scope );
 
   /**
-   * Returns all cached keys for a given scope. The
-   * returned collection may be empty.
+   * This is the main handle on a cache instance. It is pinned to a given
+   * scope when obtained through {@link IPlatformCache#getCache(CacheScope, Class, Class)}
    */
-  @SuppressWarnings( "rawtypes" )
-  Set keySet( CacheScope scope );
+  public interface Cache<K, V> {
+    /**
+     * Puts an element into the cache of the given scope and key.
+     */
+    void put( K key, V value );
 
-  /**
-   * Returns all cached elements for a given scope. The
-   * returned collection may be empty.
-   */
-  @SuppressWarnings( "rawtypes" )
-  Set values( CacheScope scope );
+    /**
+     * Returns all cached entries for a given scope. The
+     * returned collection may be empty.
+     */
+    Set<Entry<K, V>> entrySet();
+    
+    /**
+     * Returns all cached keys for a given scope. The
+     * returned collection may be empty.
+     */
+    Set<K> keySet();
 
-  /**
-   * Returns the number of elements cached for a given scope.
-   */
-  int size( CacheScope scope );
+    /**
+     * Returns all cached elements for a given scope. The
+     * returned collection may be empty.
+     */
+    Set<V> values();
 
-  /**
-   * Fetches an object from cache for the given scope and key.
-   * Returns null if there is no such element in cache.
-   */
-  Object get( CacheScope scope, Object key );
+    /**
+     * Returns the number of elements cached for a given scope.
+     */
+    int size();
 
-  /**
-   * Removed a cached object for the given scope and key.
-   */
-  void remove( CacheScope scope, Object key );
+    /**
+     * Fetches an object from cache for the given scope and key.
+     * Returns null if there is no such element in cache.
+     */
+    V get( K key );
 
-  /**
-   * Clears all caches in all scopes.
-   */
-  void clear();
+    /**
+     * Removed a cached object for the given scope and key.
+     */
+    void remove( K key );
 
-  /**
-   * Clears the cache of a specified scope.
-   */
-  void clear( CacheScope scope );
+    /**
+     * Clears the cache of a specified scope.
+     */
+    void clear();
 
-  /**
-   * Clears the cache of a specified scope. If delete is true
-   * and this is a regional scope, the cache will be torn down entirely.
-   */
-  void clear( CacheScope scope, boolean delete );
+    /**
+     * Clears the cache of a specified scope. If delete is true
+     * and this is a regional scope, the cache will be torn down entirely.
+     */
+    void clear( boolean delete );
+  }
 
   /**
    * This does not need to be called. The Pentaho platform will
@@ -257,4 +266,9 @@ public interface IPlatformCache extends ILogoutListener {
    * Tells whether the cache is enabled or not.
    */
   boolean isEnabled();
+
+  /**
+   * Clears all caches in all scopes.
+   */
+  void clearAll();
 }

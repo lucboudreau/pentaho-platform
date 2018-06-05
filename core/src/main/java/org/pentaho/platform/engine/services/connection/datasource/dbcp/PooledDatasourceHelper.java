@@ -30,6 +30,7 @@ import org.apache.commons.dbcp.PoolingDataSource;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.pool.KeyedObjectPoolFactory;
+import org.apache.commons.pool.ObjectPool;
 import org.apache.commons.pool.impl.GenericKeyedObjectPoolFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.pentaho.database.DatabaseDialectException;
@@ -318,7 +319,10 @@ public class PooledDatasourceHelper {
       }
 
       // store the pool, so we can get to it later
-      cacheManager.put( CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ), databaseConnection.getName(), pool );
+      cacheManager.getCache(
+        CacheScope.forRegion( IDBDatasourceService.JDBC_POOL ),
+        String.class,
+        ObjectPool.class).put( databaseConnection.getName(), pool );
       return ( poolingDataSource );
     } catch ( Exception e ) {
       throw new DBDatasourceServiceException( e );

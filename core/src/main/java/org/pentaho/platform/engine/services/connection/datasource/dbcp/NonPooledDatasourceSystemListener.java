@@ -80,7 +80,10 @@ public class NonPooledDatasourceSystemListener implements IPentahoSystemListener
             continue;
           }
 
-          getCache().put( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), dsName, ds );
+          getCache().getCache(
+            CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ),
+            String.class,
+            DataSource.class).put( dsName, ds );
 
           Logger.debug( this, "(Storing datasource under key \"" + IDBDatasourceService.JDBC_DATASOURCE //$NON-NLS-1$
               + dsName + "\")" ); //$NON-NLS-1$
@@ -123,7 +126,9 @@ public class NonPooledDatasourceSystemListener implements IPentahoSystemListener
 
     Logger.debug( this, "DatasourceSystemListener: Called for shutdown ..." ); //$NON-NLS-1$
 
-    getCache().clear( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ), true );
+    getCache()
+      .getCache( CacheScope.forRegion( IDBDatasourceService.JDBC_DATASOURCE ))
+        .clear( true );
 
     Logger.debug( this, "DatasourceSystemListener: Completed shutdown." ); //$NON-NLS-1$
 
